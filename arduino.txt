@@ -1,0 +1,45 @@
+#include <WiFi.h>
+
+const char *ssid = "wifi@polinatmi.ac.id";
+const char *password = "PolinATMI_4C&1L";
+
+const char *host = "192.168.1.10";
+const int port = 8888;
+
+WiFiClient client;
+
+const int CURRENT_PIN = 35;
+const int VOLTAGE_PIN = 34;
+
+float calibrationFactor = 50.0;
+float referenceVoltage = 3.3;
+
+void setup() {
+  Serial.begin(115200);
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+  }
+}
+
+void loop() {
+  if (!client.connected())
+    client.connect(host, port);
+
+  float current = analogRead(CURRENT_PIN) * calibrationFactor / referenceVoltage;
+  float voltage = analogRead(VOLTAGE_PIN) * referenceVoltage / 786.0;
+  float power = current * voltage;
+
+  String data = String(current,2) + "," +
+                String(voltage,2) + "," +
+                String(power,2);
+
+  Serial.println(data);
+
+  if (client.connected())
+    client.println(data);
+
+  delay(1000);
+}

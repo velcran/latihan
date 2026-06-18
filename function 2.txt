@@ -1,0 +1,14 @@
+let data = msg.payload.trim().split(",");
+
+let arus = parseFloat(data[0]);
+let tegangan = parseFloat(data[1]);
+let daya = parseFloat(data[2]);
+
+msg.topic = `
+INSERT INTO monitoring
+(arus, tegangan, daya)
+VALUES
+(${arus}, ${tegangan}, ${daya})
+`;
+
+return msg;
