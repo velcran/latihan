@@ -1,15 +1,13 @@
 #include <WiFi.h>
 
+int port = 5000;
+WiFiServer server(port);
+
 const char *ssid = "wifi@polinatmi.ac.id";
 const char *password = "PolinATMI_4C&1L";
 
-const char *host = "192.168.0.161";
-const int port = 8888;
-
-WiFiClient client;
-
-const int CURRENT_PIN = 35;
 const int VOLTAGE_PIN = 34;
+const int CURRENT_PIN = 35;
 
 float calibrationFactor = 50.0;
 float referenceVoltage = 3.3;
@@ -17,6 +15,7 @@ float referenceVoltage = 3.3;
 void setup() {
   Serial.begin(115200);
 
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
   Serial.print("Connecting to WiFi");
@@ -30,38 +29,43 @@ void setup() {
   Serial.println("WiFi Connected");
   Serial.print("ESP32 IP Address : ");
   Serial.println(WiFi.localIP());
+
+  server.begin();
+
+  Serial.print("TCP Server Port : ");
+  Serial.println(port);
 }
 
 void loop() {
 
-  if (!client.connected()) {
+  WiFiClient client = server.available();
 
-    Serial.print("Connecting to Node-RED ");
+  if (client) {
 
-    if (client.connect(host, port)) {
-      Serial.println("Success");
-    } else {
-      Serial.println("Failed");
-      delay(2000);
-      return;
+    Serial.println("Client Connected");
+
+    while (client.connected()) {
+
+      int rawCurrentReading = analogRead(CURRENT_PIN);
+      int voltageReading = analogRead(VOLTAGE_PIN);
+
+      float current = (rawCurrentReading * calibrationFactor) / referenceVoltage;
+      float voltage = (voltageReading * referenceVoltage) / 786.0;
+      float power = current * voltage;
+
+      String data =
+          String(current, 2) + "," +
+          String(voltage, 2) + "," +
+          String(power, 2);
+
+      Serial.println(data);
+
+      client.println(data);
+
+      delay(1000);
     }
+
+    client.stop();
+    Serial.println("Client Disconnected");
   }
-
-  int rawCurrentReading = analogRead(CURRENT_PIN);
-  int voltageReading = analogRead(VOLTAGE_PIN);
-
-  float current = (rawCurrentReading * calibrationFactor) / referenceVoltage;
-  float voltage = (voltageReading * referenceVoltage) / 786.0;
-  float power = current * voltage;
-
-  String data =
-      String(current, 2) + "," +
-      String(voltage, 2) + "," +
-      String(power, 2);
-
-  Serial.println(data);
-
-  client.println(data);
-
-  delay(1000);
 }
