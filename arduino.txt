@@ -3,7 +3,7 @@
 const char *ssid = "wifi@polinatmi.ac.id";
 const char *password = "PolinATMI_4C&1L";
 
-const char *host = "192.168.1.10";
+const char *host = "192.168.0.161";
 const int port = 8888;
 
 WiFiClient client;
@@ -19,27 +19,49 @@ void setup() {
 
   WiFi.begin(ssid, password);
 
+  Serial.print("Connecting to WiFi");
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
+    Serial.print(".");
   }
+
+  Serial.println();
+  Serial.println("WiFi Connected");
+  Serial.print("ESP32 IP Address : ");
+  Serial.println(WiFi.localIP());
 }
 
 void loop() {
-  if (!client.connected())
-    client.connect(host, port);
 
-  float current = analogRead(CURRENT_PIN) * calibrationFactor / referenceVoltage;
-  float voltage = analogRead(VOLTAGE_PIN) * referenceVoltage / 786.0;
+  if (!client.connected()) {
+
+    Serial.print("Connecting to Node-RED ");
+
+    if (client.connect(host, port)) {
+      Serial.println("Success");
+    } else {
+      Serial.println("Failed");
+      delay(2000);
+      return;
+    }
+  }
+
+  int rawCurrentReading = analogRead(CURRENT_PIN);
+  int voltageReading = analogRead(VOLTAGE_PIN);
+
+  float current = (rawCurrentReading * calibrationFactor) / referenceVoltage;
+  float voltage = (voltageReading * referenceVoltage) / 786.0;
   float power = current * voltage;
 
-  String data = String(current,2) + "," +
-                String(voltage,2) + "," +
-                String(power,2);
+  String data =
+      String(current, 2) + "," +
+      String(voltage, 2) + "," +
+      String(power, 2);
 
   Serial.println(data);
 
-  if (client.connected())
-    client.println(data);
+  client.println(data);
 
   delay(1000);
 }
